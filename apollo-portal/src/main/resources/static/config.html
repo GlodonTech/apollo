@@ -37,7 +37,7 @@
                     <header class="panel-heading">
                         环境列表
                         <span class="pull-right"
-                              data-tooltip="tooltip" data-placement="bottom" title="通过切换环境、集群来管理不同环境、集群的配置">
+                              data-tooltip="tooltip" data-placement="bottom" title="通过切换环境来管理不同环境的配置">
                                     <img src="img/question.png" class="i-20"/>
                             </span>
                     </header>
@@ -130,9 +130,9 @@
                         </div>
                     </a>
 
-                    <apolloentrance apollo-title="'添加集群'" apollo-img-src="'plus-orange'"
-                                    apollo-href="'cluster.html?#/appid=' + pageContext.appId"
-                                    ng-show="hasCreateClusterPermission"></apolloentrance>
+<!--                    <apolloentrance apollo-title="'添加集群'" apollo-img-src="'plus-orange'"-->
+<!--                                    apollo-href="'cluster.html?#/appid=' + pageContext.appId"-->
+<!--                                    ng-show="hasCreateClusterPermission"></apolloentrance>-->
 
                     <div class="list-group-item cursor-pointer hover" ng-click="showMasterPermissionTips()"
                          ng-show="!hasCreateClusterPermission">
