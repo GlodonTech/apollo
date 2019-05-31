@@ -27,7 +27,7 @@ public class ClusterController {
     this.clusterService = clusterService;
   }
 
-  @PostMapping("/apps/{appId}/clusters")
+//  @PostMapping("/apps/{appId}/clusters")
   public ClusterDTO create(@PathVariable("appId") String appId,
                            @RequestParam(value = "autoCreatePrivateNamespace", defaultValue = "true") boolean autoCreatePrivateNamespace,
                            @Valid @RequestBody ClusterDTO dto) {

@@ -29,8 +29,8 @@ public class ClusterController {
     this.userInfoHolder = userInfoHolder;
   }
 
-  @PreAuthorize(value = "@permissionValidator.hasCreateClusterPermission(#appId)")
-  @PostMapping(value = "apps/{appId}/envs/{env}/clusters")
+//  @PreAuthorize(value = "@permissionValidator.hasCreateClusterPermission(#appId)")
+//  @PostMapping(value = "apps/{appId}/envs/{env}/clusters")
   public ClusterDTO createCluster(@PathVariable String appId, @PathVariable String env,
                                   @Valid @RequestBody ClusterDTO cluster) {
     String operator = userInfoHolder.getUser().getUserId();
