@@ -259,6 +259,12 @@
 					</exclusion>
 				</exclusions>
 			</dependency>
+			<!--glodon-->
+			<dependency>
+				<groupId>com.glodon.paas.foundation</groupId>
+				<artifactId>account-starter</artifactId>
+				<version>0.0.2-SNAPSHOT</version>
+			</dependency>
 			<!--third party -->
 			<dependency>
 				<groupId>org.slf4j</groupId>

@@ -3,6 +3,7 @@ package com.ctrip.framework.apollo.portal.spi.configuration;
 import com.ctrip.framework.apollo.common.condition.ConditionalOnMissingProfile;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.portal.component.config.PortalConfig;
+import com.ctrip.framework.apollo.portal.interceptor.GlodonInterceptor;
 import com.ctrip.framework.apollo.portal.spi.LogoutHandler;
 import com.ctrip.framework.apollo.portal.spi.SsoHeartbeatHandler;
 import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
@@ -15,15 +16,22 @@ import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultLogoutHandler;
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultSsoHeartbeatHandler;
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultUserInfoHolder;
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultUserService;
+import com.ctrip.framework.apollo.portal.spi.glodon.GlodonUserInfoHolder;
+import com.ctrip.framework.apollo.portal.spi.glodon.GlodonUserService;
 import com.ctrip.framework.apollo.portal.spi.ldap.FilterLdapByGroupUserSearch;
 import com.ctrip.framework.apollo.portal.spi.ldap.LdapUserService;
 import com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserInfoHolder;
 import com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserService;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -46,6 +54,9 @@ import org.springframework.security.ldap.userdetails.DefaultLdapAuthoritiesPopul
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
+import org.springframework.session.web.http.DefaultCookieSerializer;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import javax.servlet.Filter;
 import javax.sql.DataSource;
@@ -55,6 +66,61 @@ import java.util.Map;
 
 @Configuration
 public class AuthConfiguration {
+
+  /**
+   * spring.profiles.active = glodon
+   */
+  @Configuration
+  @Profile("glodon")
+  static class GlodonAuthAutoConfiguration implements WebMvcConfigurer {
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    @Autowired
+    private ApplicationEventPublisher publisher;
+
+    @Value("${foundation.host}")
+    private String foundationHost;
+
+    @Bean
+    @ConditionalOnMissingBean(SsoHeartbeatHandler.class)
+    public SsoHeartbeatHandler defaultSsoHeartbeatHandler() {
+      return new DefaultSsoHeartbeatHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(UserInfoHolder.class)
+    public UserInfoHolder springSecurityUserInfoHolder() {
+      return new GlodonUserInfoHolder();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(LogoutHandler.class)
+    public LogoutHandler logoutHandler() {
+      return new DefaultLogoutHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(UserService.class)
+    public UserService springSecurityUserService() {
+      return new GlodonUserService();
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+      registry.addInterceptor(new GlodonInterceptor(applicationContext, publisher, foundationHost))
+      .excludePathPatterns(Lists.newArrayList("/openapi/**", "/vendor/**", "/styles/**", "/scripts/**", "/views/**", "/img/**"));
+    }
+
+    @Bean
+    public DefaultCookieSerializer defaultCookieSerializer() {
+      DefaultCookieSerializer defaultCookieSerializer = new DefaultCookieSerializer();
+      defaultCookieSerializer.setDomainName("glodon.com");
+      defaultCookieSerializer.setCookiePath("/");
+      return defaultCookieSerializer;
+    }
+  }
 
   /**
    * spring.profiles.active = ctrip
@@ -422,7 +488,7 @@ public class AuthConfiguration {
    * default profile
    */
   @Configuration
-  @ConditionalOnMissingProfile({"ctrip", "auth", "ldap"})
+  @ConditionalOnMissingProfile({"ctrip", "auth", "ldap", "glodon"})
   static class DefaultAuthAutoConfiguration {
 
     @Bean

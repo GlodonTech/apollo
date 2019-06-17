@@ -16,6 +16,10 @@
 		<github.path>${project.artifactId}</github.path>
 	</properties>
 	<dependencies>
+		<dependency>
+			<groupId>com.glodon.paas.foundation</groupId>
+			<artifactId>account-starter</artifactId>
+		</dependency>
 		<!-- json -->
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
