@@ -34,6 +34,16 @@
 			<artifactId>apollo-core</artifactId>
 		</dependency>
 		<!-- end of apollo -->
+        <!-- glodon-->
+		<dependency>
+			<groupId>com.glodon.paas.foundation</groupId>
+			<artifactId>account-ext-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp</artifactId>
+		</dependency>
+        <!-- end of glodon-->
 		<!-- guice -->
 		<dependency>
 			<groupId>com.google.inject</groupId>

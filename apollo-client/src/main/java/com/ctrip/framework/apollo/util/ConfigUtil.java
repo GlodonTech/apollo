@@ -37,6 +37,10 @@ public class ConfigUtil {
   private boolean autoUpdateInjectedSpringProperties = true;
   private final RateLimiter warnLogRateLimiter;
 
+  private String appKey;
+  private String appSecret;
+  private String accountPath;
+
   public ConfigUtil() {
     warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute
     initRefreshInterval();
@@ -47,6 +51,7 @@ public class ConfigUtil {
     initMaxConfigCacheSize();
     initLongPollingInitialDelayInMills();
     initAutoUpdateInjectedSpringProperties();
+    initGlodonAccountInfo();
   }
 
   /**
@@ -296,5 +301,33 @@ public class ConfigUtil {
 
   public boolean isAutoUpdateInjectedSpringPropertiesEnabled() {
     return autoUpdateInjectedSpringProperties;
+  }
+
+  private void initGlodonAccountInfo() {
+    appKey = System.getProperty("paas.account.serviceKey");
+    appSecret = System.getProperty("paas.account.serviceSecret");
+    accountPath = System.getProperty("paas.account.serviceUrl");
+
+    if (Strings.isNullOrEmpty(appKey)) {
+      logger.warn("appkey is null or empty");
+    }
+    if (Strings.isNullOrEmpty(appSecret)) {
+      logger.warn("appSecret is null or empty");
+    }
+    if (Strings.isNullOrEmpty(accountPath)) {
+      logger.warn("accountPath is null or empty");
+    }
+  }
+
+  public String getAppKey() {
+    return appKey;
+  }
+
+  public String getAppSecret() {
+    return appSecret;
+  }
+
+  public String getAccountPath() {
+    return accountPath;
   }
 }

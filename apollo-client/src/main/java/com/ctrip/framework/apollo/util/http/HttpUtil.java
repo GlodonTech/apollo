@@ -4,9 +4,11 @@ import com.ctrip.framework.apollo.build.ApolloInjector;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigException;
 import com.ctrip.framework.apollo.exceptions.ApolloConfigStatusCodeException;
 import com.ctrip.framework.apollo.util.ConfigUtil;
+import com.ctrip.framework.apollo.util.GlodonAccountUtil;
 import com.google.common.base.Function;
 import com.google.common.io.CharStreams;
 import com.google.gson.Gson;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -20,6 +22,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class HttpUtil {
   private ConfigUtil m_configUtil;
+  private GlodonAccountUtil m_accountUtil;
   private Gson gson;
 
   /**
@@ -27,6 +30,7 @@ public class HttpUtil {
    */
   public HttpUtil() {
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
+    m_accountUtil = ApolloInjector.getInstance(GlodonAccountUtil.class);
     gson = new Gson();
   }
 
@@ -90,6 +94,10 @@ public class HttpUtil {
 
       conn.setConnectTimeout(connectTimeout);
       conn.setReadTimeout(readTimeout);
+
+        if (m_accountUtil.needAuth()) {
+            conn.setRequestProperty("Authorization", m_accountUtil.getAuthorization());
+        }
 
       conn.connect();
 
