@@ -105,7 +105,7 @@ public final class GlodonInterceptor implements HandlerInterceptor {
 
             if (members == null) {
                 members = getMembers(workbenchInfoVO.getId(), accessToken);
-                distinctMember(members, admins, normals);
+                distinctMember(members, admins, normals, superAdmin);
 
                 logger.info("admins: {}, normals: {}", admins, normals);
             }
@@ -133,10 +133,12 @@ public final class GlodonInterceptor implements HandlerInterceptor {
 
     /**
      * 把成员分为：
-     * admins: 所有的 admin
-     * normals：所有的 member + admin
+     * admins: 所有的 admin + superAdmin
+     * normals：所有的 member + admin + superAdmin
      */
-    private void distinctMember(List<MemberVO> members, Set<String> admins, Set<String> normals) {
+    private void distinctMember(List<MemberVO> members, Set<String> admins, Set<String> normals, String superAdmin) {
+        admins.add(superAdmin);
+        normals.add(superAdmin);
         for (MemberVO m : members) {
             for (RoleVO r : m.getRoles()) {
                 switch (RoleEnum.idToRoleEnum(r.getId())) {
