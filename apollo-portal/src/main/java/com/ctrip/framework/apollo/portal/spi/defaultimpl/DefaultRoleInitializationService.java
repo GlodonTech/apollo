@@ -57,13 +57,14 @@ public class DefaultRoleInitializationService implements RoleInitializationServi
     initNamespaceRoles(appId, ConfigConsts.NAMESPACE_APPLICATION, operator);
     initNamespaceEnvRoles(appId, ConfigConsts.NAMESPACE_APPLICATION, operator);
 
-    //assign modify、release namespace role to user
-    rolePermissionService.assignRoleToUsers(
-        RoleUtils.buildNamespaceRoleName(appId, ConfigConsts.NAMESPACE_APPLICATION, RoleType.MODIFY_NAMESPACE),
-        Sets.newHashSet(operator), operator);
-    rolePermissionService.assignRoleToUsers(
-        RoleUtils.buildNamespaceRoleName(appId, ConfigConsts.NAMESPACE_APPLICATION, RoleType.RELEASE_NAMESPACE),
-        Sets.newHashSet(operator), operator);
+      // 广联达的权限逻辑：operator 不应该默认有 modify 和 release 权限
+//    //assign modify、release namespace role to user
+//    rolePermissionService.assignRoleToUsers(
+//        RoleUtils.buildNamespaceRoleName(appId, ConfigConsts.NAMESPACE_APPLICATION, RoleType.MODIFY_NAMESPACE),
+//        Sets.newHashSet(operator), operator);
+//    rolePermissionService.assignRoleToUsers(
+//        RoleUtils.buildNamespaceRoleName(appId, ConfigConsts.NAMESPACE_APPLICATION, RoleType.RELEASE_NAMESPACE),
+//        Sets.newHashSet(operator), operator);
 
   }
 

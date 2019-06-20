@@ -198,7 +198,7 @@ public final class GlodonInterceptor implements HandlerInterceptor {
      * tair 的 appId 转 apollo 的 appId
      */
     private String getApolloAppId(WorkbenchInfoVO workbenchInfoVO, AppInfoVO tairApp) {
-        return workbenchInfoVO.getName() + "_" + tairApp.getName() + "_" + workbenchInfoVO.getId().substring(0, 5);
+        return workbenchInfoVO.getName() + "_" + workbenchInfoVO.getId().substring(0, 5) + "_" + tairApp.getName();
     }
 
     private AppService getAppService() {
