@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Objects;
@@ -81,7 +82,10 @@ public class AppController {
   }
 
   @GetMapping("/by-owner")
-  public List<App> findAppsByOwner(@RequestParam("owner") String owner, Pageable page) {
+  public List<App> findAppsByOwner(@RequestParam("owner") String owner, Pageable page, HttpServletRequest request) {
+    //noinspection unchecked
+    Set<String> apolloAppIds = (Set<String>) request.getSession(false).getAttribute("apolloAppIds");
+
     Set<String> appIds = Sets.newHashSet();
 
     List<Role> userRoles = rolePermissionService.findUserRoles(owner);
@@ -89,7 +93,7 @@ public class AppController {
     for (Role role : userRoles) {
       String appId = RoleUtils.extractAppIdFromRoleName(role.getRoleName());
 
-      if (appId != null) {
+      if (appId != null && (apolloAppIds == null || apolloAppIds.contains(appId))) {
         appIds.add(appId);
       }
     }

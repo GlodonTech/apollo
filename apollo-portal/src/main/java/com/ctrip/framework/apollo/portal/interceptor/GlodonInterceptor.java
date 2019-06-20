@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 若满足以下条件：
@@ -72,17 +73,18 @@ public final class GlodonInterceptor implements HandlerInterceptor {
 
         // 若没有开通 apollo 技术服务的 app，则跳过
         String accessToken = ShiroUtil.getAccessToken(request);
-        List<AppInfoVO> glodonApps = client.getWorkbenchServiceBelongedApps(workbenchInfoVO.getId(), RESOURCE_ID, accessToken);
-        if (CollectionUtils.isEmpty(glodonApps)) {
+        List<AppInfoVO> tairApps = client.getWorkbenchServiceBelongedApps(workbenchInfoVO.getId(), RESOURCE_ID, accessToken);
+        if (CollectionUtils.isEmpty(tairApps)) {
             return true;
         }
 
-        logger.info("app size: {}", glodonApps.size());
+        logger.info("app size: {}", tairApps.size());
 
         // 把当前工作台中开通了 apollo 服务的 app 存入 session 中，
         // 在 apollo 中列出所有的 app 时，只显示这些 app。
         // 即用作过滤。
-//        request.getSession(false).setAttribute("apps", glodonApps);
+        Set<String> apolloAppIds = tairApps.stream().map(a -> getApolloAppId(workbenchInfoVO, a)).collect(Collectors.toSet());
+        request.getSession(false).setAttribute("apolloAppIds", apolloAppIds);
 
         // 若不能查到成员信息，则跳过
         List<MemberVO> members = null;
@@ -93,11 +95,11 @@ public final class GlodonInterceptor implements HandlerInterceptor {
 
         Set<String> admins = new HashSet<>(), normals = new HashSet<>();
 
-        for (AppInfoVO glodonApp : glodonApps) {
-            App apolloApp = getApolloApp(glodonApp, superAdmin, workbenchInfoVO);
+        for (AppInfoVO tairApp : tairApps) {
+            App apolloApp = getApolloApp(tairApp, superAdmin, workbenchInfoVO);
 
             if (appExist(apolloApp.getAppId())) {
-                client.getMembersUpdatedTimeBiggerThanIncludeDeleted(workbenchInfoVO.getId(),0L , accessToken);
+//                client.getMembersUpdatedTimeBiggerThanIncludeDeleted(workbenchInfoVO.getId(),0L , accessToken);
                 continue; // TODO 如果 app 存在，还需检测成员的变动，并同步到 apollo
             }
 
@@ -105,8 +107,7 @@ public final class GlodonInterceptor implements HandlerInterceptor {
                 members = getMembers(workbenchInfoVO.getId(), accessToken);
                 distinctMember(members, admins, normals);
 
-                logger.info("admins: {}", admins);
-                logger.info("normals: {}", normals);
+                logger.info("admins: {}, normals: {}", admins, normals);
             }
 
             createApp(apolloApp, admins, normals, superAdmin);
