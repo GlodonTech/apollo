@@ -1,6 +1,7 @@
 package com.ctrip.framework.apollo.portal.interceptor;
 
 import com.ctrip.framework.apollo.common.entity.App;
+import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
 import com.ctrip.framework.apollo.portal.listener.AppCreationEvent;
 import com.ctrip.framework.apollo.portal.service.AppService;
 import com.ctrip.framework.apollo.portal.service.RolePermissionService;
@@ -87,33 +88,54 @@ public final class GlodonInterceptor implements HandlerInterceptor {
         request.getSession(false).setAttribute("apolloAppIds", apolloAppIds);
 
         // 若不能查到成员信息，则跳过
-        List<MemberVO> members = null;
-
-        // 分成普通成员和 admin 成员
         String superAdmin = workbenchInfoVO.getSuperAdminName();
-        logger.info("super admin: {}", superAdmin);
-
         Set<String> admins = new HashSet<>(), normals = new HashSet<>();
+        List<MemberVO> members = getMembers(workbenchInfoVO.getId(), accessToken);
+        distinctMember(members, admins, normals, superAdmin);
+        logger.info("super admin: {}, admins: {}, normals: {}", superAdmin, admins, normals);
 
         for (AppInfoVO tairApp : tairApps) {
             App apolloApp = getApolloApp(tairApp, superAdmin, workbenchInfoVO);
 
             if (appExist(apolloApp.getAppId())) {
-//                client.getMembersUpdatedTimeBiggerThanIncludeDeleted(workbenchInfoVO.getId(),0L , accessToken);
-                continue; // TODO 如果 app 存在，还需检测成员的变动，并同步到 apollo
+                String modifyRoleName = RoleUtils.buildModifyDefaultNamespaceRoleName(apolloApp.getAppId());
+                matchRole(modifyRoleName, normals, superAdmin);
+
+                String releaseRoleName = RoleUtils.buildReleaseDefaultNamespaceRoleName(apolloApp.getAppId());
+                matchRole(releaseRoleName, admins, superAdmin);
+            } else {
+                createApp(apolloApp, admins, normals, superAdmin);
             }
-
-            if (members == null) {
-                members = getMembers(workbenchInfoVO.getId(), accessToken);
-                distinctMember(members, admins, normals, superAdmin);
-
-                logger.info("admins: {}, normals: {}", admins, normals);
-            }
-
-            createApp(apolloApp, admins, normals, superAdmin);
         }
 
         return true;
+    }
+
+    /**
+     * 使角色匹配
+     * @param roleName 角色名称
+     * @param usersToHaveRole 需要拥有该角色的用户
+     */
+    private void matchRole(String roleName, Set<String> usersToHaveRole, String superAdmin) {
+        // 获取已经拥有该角色的用户
+        Set<String> usersHadRole = getRolePermissionService().queryUsersWithRole(roleName)
+                .stream()
+                .map(UserInfo::getUserId)
+                .collect(Collectors.toSet());
+
+        // 已经拥有该角色，但是不应该拥有的用户，需要被删除该角色
+        Sets.SetView<String> usersToBeRemoveRole = Sets.difference(usersHadRole, usersToHaveRole);
+        if (!usersToBeRemoveRole.isEmpty()) {
+            getRolePermissionService().removeRoleFromUsers(roleName, usersToBeRemoveRole, superAdmin);
+            logger.info("users {} removed role: {}", usersToBeRemoveRole, roleName);
+        }
+
+        // 没有该角色，但是应该拥有该角色的用户，需要赋予该角色
+        Sets.SetView<String> usersToBeAssign = Sets.difference(usersToHaveRole, usersHadRole);
+        if (!usersToBeAssign.isEmpty()) {
+            getRolePermissionService().assignRoleToUsers(roleName, usersToBeAssign, superAdmin);
+            logger.info("users {} assigned role: {}", usersToBeAssign, roleName);
+        }
     }
 
     /**
