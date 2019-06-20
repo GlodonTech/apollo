@@ -114,7 +114,7 @@
                 </section>
 
                 <!--operation entrance-->
-                <section>
+                <section style="display: none">
                     <apolloentrance apollo-title="'管理项目'" apollo-img-src="'project-manage'"
                                     apollo-href="'/app/setting.html?#/appid=' + pageContext.appId"></apolloentrance>
 
@@ -130,9 +130,9 @@
                         </div>
                     </a>
 
-<!--                    <apolloentrance apollo-title="'添加集群'" apollo-img-src="'plus-orange'"-->
-<!--                                    apollo-href="'cluster.html?#/appid=' + pageContext.appId"-->
-<!--                                    ng-show="hasCreateClusterPermission"></apolloentrance>-->
+                    <apolloentrance apollo-title="'添加集群'" apollo-img-src="'plus-orange'"
+                                    apollo-href="'cluster.html?#/appid=' + pageContext.appId"
+                                    ng-show="hasCreateClusterPermission"></apolloentrance>
 
                     <div class="list-group-item cursor-pointer hover" ng-click="showMasterPermissionTips()"
                          ng-show="!hasCreateClusterPermission">

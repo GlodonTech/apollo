@@ -61,13 +61,13 @@
                     <img src="img/release-history.png">
                     发布历史
                 </a>
-                <a type="button" class="btn btn-default btn-sm"
-                   data-tooltip="tooltip" data-placement="bottom" title="配置修改、发布权限"
-                   href="/namespace/role.html?#/appid={{appId}}&namespaceName={{namespace.baseInfo.namespaceName}}"
-                   ng-show="hasAssignUserPermission">
-                    <img src="img/assign.png">
-                    授权
-                </a>
+<!--                <a type="button" class="btn btn-default btn-sm"-->
+<!--                   data-tooltip="tooltip" data-placement="bottom" title="配置修改、发布权限"-->
+<!--                   href="/namespace/role.html?#/appid={{appId}}&namespaceName={{namespace.baseInfo.namespaceName}}"-->
+<!--                   ng-show="hasAssignUserPermission">-->
+<!--                    <img src="img/assign.png">-->
+<!--                    授权-->
+<!--                </a>-->
 
                 <a type="button" class="btn btn-default btn-sm"
                    data-tooltip="tooltip" data-placement="bottom" title="创建测试版本"
@@ -77,27 +77,27 @@
                     灰度
                 </a>
 
-                <a type="button" class="btn btn-default btn-sm J_tableview_btn"
-                   data-tooltip="tooltip" data-placement="bottom" title="您没有任何配置权限,请申请"
-                   ng-click="showNoModifyPermissionDialog()"
-                   ng-show="!namespace.hasModifyPermission && !namespace.hasReleasePermission">
-                    申请配置权限
-                </a>
+<!--                <a type="button" class="btn btn-default btn-sm J_tableview_btn"-->
+<!--                   data-tooltip="tooltip" data-placement="bottom" title="您没有任何配置权限,请申请"-->
+<!--                   ng-click="showNoModifyPermissionDialog()"-->
+<!--                   ng-show="!namespace.hasModifyPermission && !namespace.hasReleasePermission">-->
+<!--                    申请配置权限-->
+<!--                </a>-->
 
-                <div class="btn-group"
-                     ng-show="namespace.hasModifyPermission || namespace.hasReleasePermission || hasAssignUserPermission">
-                    <button type="button" class="btn btn-default btn-sm dropdown-toggle"
-                            data-toggle="dropdown"
-                            aria-haspopup="true" aria-expanded="false">
-                        <img src="img/operate.png"> <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" style="right: 0; left: -160px;">
-                        <li ng-click="deleteNamespace(namespace)">
-                            <a style="color: red">
-                                <img src="img/delete.png"> 删除Namespace</a>
-                        </li>
-                    </ul>
-                </div>
+<!--                <div class="btn-group"-->
+<!--                     ng-show="namespace.hasModifyPermission || namespace.hasReleasePermission || hasAssignUserPermission">-->
+<!--                    <button type="button" class="btn btn-default btn-sm dropdown-toggle"-->
+<!--                            data-toggle="dropdown"-->
+<!--                            aria-haspopup="true" aria-expanded="false">-->
+<!--                        <img src="img/operate.png"> <span class="caret"></span>-->
+<!--                    </button>-->
+<!--                    <ul class="dropdown-menu" style="right: 0; left: -160px;">-->
+<!--                        <li ng-click="deleteNamespace(namespace)">-->
+<!--                            <a style="color: red">-->
+<!--                                <img src="img/delete.png"> 删除Namespace</a>-->
+<!--                        </li>-->
+<!--                    </ul>-->
+<!--                </div>-->
             </div>
         </div>
     </header>
