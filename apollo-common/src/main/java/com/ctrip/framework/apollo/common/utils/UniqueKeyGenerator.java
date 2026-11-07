@@ -1,11 +1,26 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.common.utils;
-
-import com.google.common.base.Joiner;
 
 import com.ctrip.framework.apollo.core.utils.ByteUtil;
 import com.ctrip.framework.apollo.core.utils.MachineUtil;
-
-import org.apache.commons.lang.time.FastDateFormat;
+import com.google.common.base.Joiner;
+import java.util.UUID;
+import org.apache.commons.lang3.time.FastDateFormat;
 
 import java.security.SecureRandom;
 import java.util.Date;
@@ -14,16 +29,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class UniqueKeyGenerator {
 
-  private static final FastDateFormat TIMESTAMP_FORMAT = FastDateFormat.getInstance("yyyyMMddHHmmss");
+  private static final FastDateFormat TIMESTAMP_FORMAT =
+      FastDateFormat.getInstance("yyyyMMddHHmmss");
   private static final AtomicInteger counter = new AtomicInteger(new SecureRandom().nextInt());
   private static final Joiner KEY_JOINER = Joiner.on("-");
 
-
-
-  public static String generate(Object... args){
-    String hexIdString =
-        ByteUtil.toHexString(toByteArray(Objects.hash(args), MachineUtil.getMachineIdentifier(),
-                                         counter.incrementAndGet()));
+  public static String generate(Object... args) {
+    String hexIdString = ByteUtil.toHexString(toByteArray(Objects.hash(args),
+        MachineUtil.getMachineIdentifier(), counter.incrementAndGet()));
 
     return KEY_JOINER.join(TIMESTAMP_FORMAT.format(new Date()), hexIdString);
 
@@ -46,5 +59,8 @@ public class UniqueKeyGenerator {
     return bytes;
   }
 
+  public static String generateId() {
+    return UUID.randomUUID().toString().replaceAll("-", "");
+  }
 
 }

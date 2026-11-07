@@ -1,8 +1,24 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.portal.listener;
 
 import com.ctrip.framework.apollo.common.dto.AppDTO;
 import com.ctrip.framework.apollo.common.utils.BeanUtils;
-import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI;
 import com.ctrip.framework.apollo.portal.component.PortalSettings;
 import com.ctrip.framework.apollo.tracer.Tracer;
@@ -20,7 +36,8 @@ public class AppInfoChangedListener {
   private final AdminServiceAPI.AppAPI appAPI;
   private final PortalSettings portalSettings;
 
-  public AppInfoChangedListener(final AdminServiceAPI.AppAPI appAPI, final PortalSettings portalSettings) {
+  public AppInfoChangedListener(final AdminServiceAPI.AppAPI appAPI,
+      final PortalSettings portalSettings) {
     this.appAPI = appAPI;
     this.portalSettings = portalSettings;
   }
@@ -36,7 +53,8 @@ public class AppInfoChangedListener {
         appAPI.updateApp(env, appDTO);
       } catch (Throwable e) {
         logger.error("Update app's info failed. Env = {}, AppId = {}", env, appId, e);
-        Tracer.logError(String.format("Update app's info failed. Env = %s, AppId = %s", env, appId), e);
+        Tracer.logError(String.format("Update app's info failed. Env = %s, AppId = %s", env, appId),
+            e);
       }
     }
   }

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.adminservice.controller;
 
 import com.ctrip.framework.apollo.biz.repository.AppRepository;
@@ -21,7 +37,7 @@ public class AppControllerTest extends AbstractControllerTest {
   AppRepository appRepository;
 
   private String getBaseAppUrl() {
-    return "http://localhost:" + port + "/apps/";
+    return url("/apps");
   }
 
   @Test
@@ -35,11 +51,11 @@ public class AppControllerTest extends AbstractControllerTest {
     Assert.assertEquals(dto.getAppId(), result.getAppId());
     Assert.assertTrue(result.getId() > 0);
 
-    Boolean falseUnique =
-        restTemplate.getForObject(getBaseAppUrl() + dto.getAppId() + "/unique", Boolean.class);
+    Boolean falseUnique = restTemplate
+        .getForObject(getBaseAppUrl() + "/" + dto.getAppId() + "/unique", Boolean.class);
     Assert.assertFalse(falseUnique);
     Boolean trueUnique = restTemplate
-        .getForObject(getBaseAppUrl() + dto.getAppId() + "true" + "/unique", Boolean.class);
+        .getForObject(getBaseAppUrl() + "/" + dto.getAppId() + "true" + "/unique", Boolean.class);
     Assert.assertTrue(trueUnique);
   }
 
@@ -76,7 +92,7 @@ public class AppControllerTest extends AbstractControllerTest {
 
     try {
       restTemplate.postForEntity(getBaseAppUrl(), dto, AppDTO.class);
-    }catch (HttpClientErrorException e){
+    } catch (HttpClientErrorException e) {
       Assert.assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
     }
 
@@ -89,7 +105,7 @@ public class AppControllerTest extends AbstractControllerTest {
     App app = BeanUtils.transform(App.class, dto);
     app = appRepository.save(app);
 
-    AppDTO result = restTemplate.getForObject(getBaseAppUrl() + dto.getAppId(), AppDTO.class);
+    AppDTO result = restTemplate.getForObject(getBaseAppUrl() + "/" + dto.getAppId(), AppDTO.class);
     Assert.assertEquals(dto.getAppId(), result.getAppId());
     Assert.assertEquals(dto.getName(), result.getName());
   }
@@ -97,7 +113,7 @@ public class AppControllerTest extends AbstractControllerTest {
   @Test(expected = HttpClientErrorException.class)
   @Sql(scripts = "/controller/cleanup.sql", executionPhase = ExecutionPhase.AFTER_TEST_METHOD)
   public void testFindNotExist() {
-    restTemplate.getForEntity(getBaseAppUrl() + "notExists", AppDTO.class);
+    restTemplate.getForEntity(getBaseAppUrl() + "/notExists", AppDTO.class);
   }
 
   @Test
@@ -107,7 +123,7 @@ public class AppControllerTest extends AbstractControllerTest {
     App app = BeanUtils.transform(App.class, dto);
     app = appRepository.save(app);
 
-    restTemplate.delete("http://localhost:{port}/apps/{appId}?operator={operator}", port, app.getAppId(), "test");
+    restTemplate.delete(url("/apps/{appId}?operator={operator}"), app.getAppId(), "test");
 
     App deletedApp = appRepository.findById(app.getId()).orElse(null);
     Assert.assertNull(deletedApp);
@@ -123,7 +139,8 @@ public class AppControllerTest extends AbstractControllerTest {
       Assert.fail("Should throw");
     } catch (HttpClientErrorException e) {
       Assert.assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
-      Assert.assertThat(new String(e.getResponseBodyAsByteArray()), containsString(InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE));
+      Assert.assertThat(new String(e.getResponseBodyAsByteArray()),
+          containsString(InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE));
     }
   }
 

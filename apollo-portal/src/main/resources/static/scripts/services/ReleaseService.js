@@ -1,30 +1,72 @@
-appService.service('ReleaseService', ['$resource', '$q', function ($resource, $q) {
+/*
+ * Copyright 2024 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+appService.service('ReleaseService', ['$resource', '$q','AppUtil', function ($resource, $q,AppUtil) {
+    function toLegacyReleaseChange(change) {
+        if (!change || change.entity) {
+            return change;
+        }
+        return {
+            type: change.changeType,
+            entity: {
+                firstEntity: {
+                    key: change.key,
+                    value: change.oldValue
+                },
+                secondEntity: {
+                    key: change.key,
+                    value: change.newValue
+                }
+            }
+        };
+    }
+
+    function adaptReleaseDiff(result) {
+        if (!result || !result.changes) {
+            return result;
+        }
+        result.changes = result.changes.map(toLegacyReleaseChange);
+        return result;
+    }
+
     var resource = $resource('', {}, {
-        find_all_releases: {
+        get: {
             method: 'GET',
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/releases/all',
-            isArray: true
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/releases/:releaseId'
         },
         find_active_releases: {
             method: 'GET',
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/releases/active',
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/releases/active',
             isArray: true
         },
         compare: {
             method: 'GET',
-            url: '/envs/:env/releases/compare'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/releases/comparison'
         },
         release: {
             method: 'POST',
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/releases'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/releases'
         },
         gray_release: {
             method: 'POST',
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/releases'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/releases'
         },
         rollback: {
             method: 'PUT',
-            url: "envs/:env/releases/:releaseId/rollback"
+            url: AppUtil.prefixPath() + "/openapi/v1/envs/:env/releases/:releaseId/rollback"
         }
     });
 
@@ -40,7 +82,7 @@ appService.service('ReleaseService', ['$resource', '$q', function ($resource, $q
                              releaseComment: comment,
                              isEmergencyPublish: isEmergencyPublish
                          }, function (result) {
-            d.resolve(result);
+            d.resolve(adaptReleaseDiff(result));
         }, function (result) {
             d.reject(result);
         });
@@ -67,17 +109,13 @@ appService.service('ReleaseService', ['$resource', '$q', function ($resource, $q
         return d.promise;
     }
 
-    function findAllReleases(appId, env, clusterName, namespaceName, page, size) {
+    function get(env, releaseId) {
         var d = $q.defer();
-        resource.find_all_releases({
-                                       appId: appId,
-                                       env: env,
-                                       clusterName: clusterName,
-                                       namespaceName: namespaceName,
-                                       page: page,
-                                       size: size
-                                   }, function (result) {
-            d.resolve(result);
+        resource.get({
+                         env: env,
+                         releaseId: releaseId
+                         }, function (result) {
+            d.resolve(adaptReleaseDiff(result));
         }, function (result) {
             d.reject(result);
         });
@@ -131,7 +169,7 @@ appService.service('ReleaseService', ['$resource', '$q', function ($resource, $q
                              baseReleaseId: baseReleaseId,
                              toCompareReleaseId: toCompareReleaseId
                          }, function (result) {
-            d.resolve(result);
+            d.resolve(adaptReleaseDiff(result));
         }, function (result) {
             d.reject(result);
         });
@@ -153,13 +191,30 @@ appService.service('ReleaseService', ['$resource', '$q', function ($resource, $q
 
     }
 
+    function rollbackTo(env, releaseId, toReleaseId) {
+        var d = $q.defer();
+        resource.rollback({
+                              env: env,
+                              releaseId: releaseId,
+                              toReleaseId: toReleaseId
+                          }, {}, function (result) {
+                              d.resolve(result);
+                          }, function (result) {
+                              d.reject(result);
+                          }
+        );
+        return d.promise;
+
+    }
+
     return {
         publish: createRelease,
         grayPublish: createGrayRelease,
-        findAllRelease: findAllReleases,
+        get: get,
         findActiveReleases: findActiveReleases,
         findLatestActiveRelease: findLatestActiveRelease,
         compare: compare,
-        rollback: rollback
+        rollback: rollback,
+        rollbackTo: rollbackTo
     }
 }]);

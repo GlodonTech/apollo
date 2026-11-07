@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.portal.spi.ldap;
 
 import static java.util.stream.Collectors.collectingAndThen;
@@ -6,20 +22,20 @@ import static org.springframework.ldap.query.LdapQueryBuilder.query;
 
 import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
 import com.ctrip.framework.apollo.portal.spi.UserService;
-import com.ctrip.framework.apollo.portal.spi.configuration.LdapExtendProperties;
-import com.ctrip.framework.apollo.portal.spi.configuration.LdapProperties;
 import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
-import javax.naming.Name;
 import javax.naming.directory.Attribute;
+import javax.naming.directory.Attributes;
 import javax.naming.ldap.LdapName;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.ContextMapper;
 import org.springframework.ldap.core.DirContextAdapter;
@@ -41,11 +57,7 @@ import org.springframework.util.CollectionUtils;
  */
 public class LdapUserService implements UserService {
 
-  @Autowired
-  private LdapProperties ldapProperties;
-
-  @Autowired
-  private LdapExtendProperties ldapExtendProperties;
+  private final LdapTemplate ldapTemplate;
 
   /**
    * ldap search base
@@ -78,6 +90,12 @@ public class LdapUserService implements UserService {
   private String emailAttrName;
 
   /**
+   * Optional account status attribute. Missing or unmapped values keep users enabled.
+   */
+  @Value("${ldap.mapping.accountStatus:}")
+  private String accountStatusAttrName;
+
+  /**
    * rdn
    */
   @Value("${ldap.mapping.rdnKey:}")
@@ -107,22 +125,26 @@ public class LdapUserService implements UserService {
   @Value("${ldap.group.groupMembership:}")
   private String groupMembershipAttrName;
 
-
-  @Autowired
-  private LdapTemplate ldapTemplate;
-
   private static final String MEMBER_OF_ATTR_NAME = "memberOf";
   private static final String MEMBER_UID_ATTR_NAME = "memberUid";
+  private static final int ENABLED = 1;
+  private static final int DISABLED = 0;
+  private static final int USER_ACCOUNT_CONTROL_DISABLED = 0x2;
+
+  public LdapUserService(final LdapTemplate ldapTemplate) {
+    this.ldapTemplate = ldapTemplate;
+  }
 
   /**
    * 用户信息Mapper
    */
-  private ContextMapper<UserInfo> ldapUserInfoMapper = (ctx) -> {
+  private final ContextMapper<UserInfo> ldapUserInfoMapper = (ctx) -> {
     DirContextAdapter contextAdapter = (DirContextAdapter) ctx;
     UserInfo userInfo = new UserInfo();
     userInfo.setUserId(contextAdapter.getStringAttribute(loginIdAttrName));
     userInfo.setName(contextAdapter.getStringAttribute(userDisplayNameAttrName));
     userInfo.setEmail(contextAdapter.getStringAttribute(emailAttrName));
+    userInfo.setEnabled(resolveEnabled(contextAdapter));
     return userInfo;
   };
 
@@ -130,9 +152,8 @@ public class LdapUserService implements UserService {
    * 查询条件
    */
   private ContainerCriteria ldapQueryCriteria() {
-    ContainerCriteria criteria = query()
-        .searchScope(SearchScope.SUBTREE)
-        .where("objectClass").is(objectClassAttrName);
+    ContainerCriteria criteria =
+        query().searchScope(SearchScope.SUBTREE).where("objectClass").is(objectClassAttrName);
     if (memberOf.length > 0 && !StringUtils.isEmpty(memberOf[0])) {
       ContainerCriteria memberOfFilters = query().where(MEMBER_OF_ATTR_NAME).is(memberOf[0]);
       Arrays.stream(memberOf).skip(1)
@@ -163,30 +184,34 @@ public class LdapUserService implements UserService {
       if (userDisplayNameAttribute != null && userDisplayNameAttribute.get() != null) {
         tmp.setName(userDisplayNameAttribute.get().toString());
       }
+      tmp.setEnabled(resolveEnabled(attributes));
 
       if (userIds != null) {
         if (userIds.stream().anyMatch(c -> c.equals(tmp.getUserId()))) {
           return tmp;
-        } else {
-          return null;
         }
-      } else {
-        return tmp;
+        return null;
       }
+      return tmp;
 
     });
   }
 
   private UserInfo searchUserById(String userId) {
-    return ldapTemplate.searchForObject(query().where(loginIdAttrName).is(userId),
-        ctx -> {
-          UserInfo userInfo = new UserInfo();
-          DirContextAdapter contextAdapter = (DirContextAdapter) ctx;
-          userInfo.setEmail(contextAdapter.getStringAttribute(emailAttrName));
-          userInfo.setName(contextAdapter.getStringAttribute(userDisplayNameAttrName));
-          userInfo.setUserId(contextAdapter.getStringAttribute(loginIdAttrName));
-          return userInfo;
-        });
+    try {
+      return ldapTemplate.searchForObject(query().where(loginIdAttrName).is(userId), ctx -> {
+        UserInfo userInfo = new UserInfo();
+        DirContextAdapter contextAdapter = (DirContextAdapter) ctx;
+        userInfo.setEmail(contextAdapter.getStringAttribute(emailAttrName));
+        userInfo.setName(contextAdapter.getStringAttribute(userDisplayNameAttrName));
+        userInfo.setUserId(contextAdapter.getStringAttribute(loginIdAttrName));
+        userInfo.setEnabled(resolveEnabled(contextAdapter));
+        return userInfo;
+      });
+    } catch (EmptyResultDataAccessException ex) {
+      // EmptyResultDataAccessException means no record found
+      return null;
+    }
   }
 
   /**
@@ -197,60 +222,61 @@ public class LdapUserService implements UserService {
    * @param keyword user search keywords
    * @param userIds user id list
    */
-  private List<UserInfo> searchUserInfoByGroup(String groupBase, String groupSearch,
-      String keyword, List<String> userIds) {
+  private List<UserInfo> searchUserInfoByGroup(String groupBase, String groupSearch, String keyword,
+      List<String> userIds) {
 
-    return ldapTemplate
-        .searchForObject(groupBase, groupSearch, ctx -> {
-          String[] members = ((DirContextAdapter) ctx).getStringAttributes(groupMembershipAttrName);
+    return ldapTemplate.searchForObject(groupBase, groupSearch, ctx -> {
+      List<UserInfo> userInfos = new ArrayList<>();
 
-          if (!MEMBER_UID_ATTR_NAME.equals(groupMembershipAttrName)) {
-            List<UserInfo> userInfos = new ArrayList<>();
-            for (String item : members) {
-              LdapName ldapName = LdapUtils.newLdapName(item);
-              LdapName memberRdn = LdapUtils.removeFirst(ldapName, LdapUtils.newLdapName(base));
-              if (keyword != null) {
-                String rdnValue = LdapUtils.getValue(memberRdn, rdnKey).toString();
-                if (rdnValue.toLowerCase().contains(keyword.toLowerCase())) {
-                  UserInfo userInfo = lookupUser(memberRdn.toString(), userIds);
-                  userInfos.add(userInfo);
-                }
-              } else {
-                UserInfo userInfo = lookupUser(memberRdn.toString(), userIds);
-                if (userInfo != null) {
-                  userInfos.add(userInfo);
-                }
-              }
-
+      if (!MEMBER_UID_ATTR_NAME.equals(groupMembershipAttrName)) {
+        String[] members = ((DirContextAdapter) ctx).getStringAttributes(groupMembershipAttrName);
+        for (String item : members) {
+          LdapName ldapName = LdapUtils.newLdapName(item);
+          LdapName memberRdn = LdapUtils.removeFirst(ldapName, LdapUtils.newLdapName(base));
+          if (keyword != null) {
+            String rdnValue = LdapUtils.getValue(memberRdn, rdnKey).toString();
+            if (rdnValue.toLowerCase().contains(keyword.toLowerCase())) {
+              UserInfo userInfo = lookupUser(memberRdn.toString(), userIds);
+              userInfos.add(userInfo);
             }
-            return userInfos;
           } else {
-            List<UserInfo> userInfos = new ArrayList<>();
-            String[] memberUids = ((DirContextAdapter) ctx)
-                .getStringAttributes(groupMembershipAttrName);
-            for (String memberUid : memberUids) {
-              UserInfo userInfo = searchUserById(memberUid);
-              if (userInfo != null) {
-                if (keyword != null) {
-                  if (userInfo.getUserId().toLowerCase().contains(keyword.toLowerCase())) {
-                    userInfos.add(userInfo);
-                  }
-                } else {
-                  userInfos.add(userInfo);
-                }
-              }
+            UserInfo userInfo = lookupUser(memberRdn.toString(), userIds);
+            if (userInfo != null) {
+              userInfos.add(userInfo);
             }
-            return userInfos;
           }
-        });
+
+        }
+        return userInfos;
+      }
+
+      Set<String> memberUids =
+          Sets.newHashSet(((DirContextAdapter) ctx).getStringAttributes(groupMembershipAttrName));
+      if (!CollectionUtils.isEmpty(userIds)) {
+        memberUids = Sets.intersection(memberUids, Sets.newHashSet(userIds));
+      }
+      for (String memberUid : memberUids) {
+        UserInfo userInfo = searchUserById(memberUid);
+        if (userInfo != null) {
+          if (keyword != null) {
+            if (userInfo.getUserId().toLowerCase().contains(keyword.toLowerCase())) {
+              userInfos.add(userInfo);
+            }
+          } else {
+            userInfos.add(userInfo);
+          }
+        }
+      }
+      return userInfos;
+    });
   }
 
   @Override
-  public List<UserInfo> searchUsers(String keyword, int offset, int limit) {
+  public List<UserInfo> searchUsers(String keyword, int offset, int limit,
+      boolean includeInactiveUsers) {
     List<UserInfo> users = new ArrayList<>();
     if (StringUtils.isNotBlank(groupSearch)) {
-      List<UserInfo> userListByGroup = searchUserInfoByGroup(groupBase, groupSearch, keyword,
-          null);
+      List<UserInfo> userListByGroup = searchUserInfoByGroup(groupBase, groupSearch, keyword, null);
       users.addAll(userListByGroup);
       return users.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>((o1, o2) -> {
         if (o1.getUserId().equals(o2.getUserId())) {
@@ -258,30 +284,33 @@ public class LdapUserService implements UserService {
         }
         return -1;
       })), ArrayList::new));
-    } else {
-      ContainerCriteria criteria = ldapQueryCriteria();
-      if (!Strings.isNullOrEmpty(keyword)) {
-        criteria.and(query().where(loginIdAttrName).like(keyword + "*").or(userDisplayNameAttrName)
-            .like(keyword + "*"));
-      }
-      users = ldapTemplate.search(criteria, ldapUserInfoMapper);
-      return users;
     }
+    ContainerCriteria criteria = ldapQueryCriteria();
+    if (!Strings.isNullOrEmpty(keyword)) {
+      criteria.and(query().where(loginIdAttrName).like(keyword + "*").or(userDisplayNameAttrName)
+          .like(keyword + "*"));
+    }
+    users = ldapTemplate.search(criteria, ldapUserInfoMapper);
+    return users;
   }
 
   @Override
   public UserInfo findByUserId(String userId) {
     if (StringUtils.isNotBlank(groupSearch)) {
-      List<UserInfo> lists = searchUserInfoByGroup(groupBase, groupSearch, null,
-          Collections.singletonList(userId));
+      List<UserInfo> lists =
+          searchUserInfoByGroup(groupBase, groupSearch, null, Collections.singletonList(userId));
       if (lists != null && !lists.isEmpty() && lists.get(0) != null) {
         return lists.get(0);
       }
       return null;
-    } else {
-      return ldapTemplate
-          .searchForObject(ldapQueryCriteria().and(loginIdAttrName).is(userId), ldapUserInfoMapper);
+    }
 
+    try {
+      return ldapTemplate.searchForObject(ldapQueryCriteria().and(loginIdAttrName).is(userId),
+          ldapUserInfoMapper);
+    } catch (EmptyResultDataAccessException ex) {
+      // EmptyResultDataAccessException means no record found
+      return null;
     }
   }
 
@@ -289,19 +318,58 @@ public class LdapUserService implements UserService {
   public List<UserInfo> findByUserIds(List<String> userIds) {
     if (CollectionUtils.isEmpty(userIds)) {
       return Collections.emptyList();
-    } else {
-      List<UserInfo> userList = new ArrayList<>();
-      if (StringUtils.isNotBlank(groupSearch)) {
-        List<UserInfo> userListByGroup = searchUserInfoByGroup(groupBase, groupSearch, null,
-            userIds);
-        userList.addAll(userListByGroup);
-        return userList;
-      } else {
-        ContainerCriteria criteria = query().where(loginIdAttrName).is(userIds.get(0));
-        userIds.stream().skip(1).forEach(userId -> criteria.or(loginIdAttrName).is(userId));
-        return ldapTemplate.search(ldapQueryCriteria().and(criteria), ldapUserInfoMapper);
+    }
+    if (StringUtils.isNotBlank(groupSearch)) {
+      return searchUserInfoByGroup(groupBase, groupSearch, null, userIds);
+    }
+    ContainerCriteria criteria = query().where(loginIdAttrName).is(userIds.get(0));
+    userIds.stream().skip(1).forEach(userId -> criteria.or(loginIdAttrName).is(userId));
+    return ldapTemplate.search(ldapQueryCriteria().and(criteria), ldapUserInfoMapper);
+  }
+
+  private int resolveEnabled(DirContextAdapter contextAdapter) {
+    if (Strings.isNullOrEmpty(accountStatusAttrName)) {
+      return ENABLED;
+    }
+    return resolveEnabled(contextAdapter.getStringAttribute(accountStatusAttrName));
+  }
+
+  private int resolveEnabled(Attributes attributes) throws javax.naming.NamingException {
+    if (Strings.isNullOrEmpty(accountStatusAttrName)) {
+      return ENABLED;
+    }
+    Attribute accountStatusAttribute = attributes.get(accountStatusAttrName);
+    if (accountStatusAttribute == null || accountStatusAttribute.get() == null) {
+      return ENABLED;
+    }
+    return resolveEnabled(accountStatusAttribute.get().toString());
+  }
+
+  private int resolveEnabled(String accountStatus) {
+    if (Strings.isNullOrEmpty(accountStatus)) {
+      return ENABLED;
+    }
+    String normalizedStatus = accountStatus.trim().toLowerCase();
+    if (Strings.isNullOrEmpty(normalizedStatus)) {
+      return ENABLED;
+    }
+    if ("useraccountcontrol".equalsIgnoreCase(accountStatusAttrName)) {
+      try {
+        int userAccountControl = Integer.parseInt(normalizedStatus);
+        return (userAccountControl & USER_ACCOUNT_CONTROL_DISABLED) == 0 ? ENABLED : DISABLED;
+      } catch (NumberFormatException ignored) {
+        return ENABLED;
       }
     }
+    if ("0".equals(normalizedStatus) || "false".equals(normalizedStatus)
+        || "no".equals(normalizedStatus) || "disabled".equals(normalizedStatus)
+        || "disable".equals(normalizedStatus) || "inactive".equals(normalizedStatus)
+        || "locked".equals(normalizedStatus) || "lock".equals(normalizedStatus)
+        || ("true".equals(normalizedStatus)
+            && "nsaccountlock".equalsIgnoreCase(accountStatusAttrName))) {
+      return DISABLED;
+    }
+    return ENABLED;
   }
 
 }

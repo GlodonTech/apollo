@@ -1,51 +1,67 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.biz.entity;
 
 import com.google.common.base.MoreObjects;
 
 import java.util.Date;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.PrePersist;
-import javax.persistence.PreUpdate;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
 @Entity
-@Table(name = "InstanceConfig")
+@Table(name = "`InstanceConfig`")
 public class InstanceConfig {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "Id")
+  @Column(name = "`Id`")
   private long id;
 
-  @Column(name = "InstanceId")
+  @Column(name = "`InstanceId`")
   private long instanceId;
 
-  @Column(name = "ConfigAppId", nullable = false)
+  @Column(name = "`ConfigAppId`", nullable = false)
   private String configAppId;
 
-  @Column(name = "ConfigClusterName", nullable = false)
+  @Column(name = "`ConfigClusterName`", nullable = false)
   private String configClusterName;
 
-  @Column(name = "ConfigNamespaceName", nullable = false)
+  @Column(name = "`ConfigNamespaceName`", nullable = false)
   private String configNamespaceName;
 
-  @Column(name = "ReleaseKey", nullable = false)
+  @Column(name = "`ReleaseKey`", nullable = false)
   private String releaseKey;
 
-  @Column(name = "ReleaseDeliveryTime", nullable = false)
+  @Column(name = "`ReleaseDeliveryTime`", nullable = false)
   private Date releaseDeliveryTime;
 
-  @Column(name = "DataChange_CreatedTime", nullable = false)
+  @Column(name = "`DataChange_CreatedTime`", nullable = false)
   private Date dataChangeCreatedTime;
 
-  @Column(name = "DataChange_LastTime")
+  @Column(name = "`DataChange_LastTime`")
   private Date dataChangeLastModifiedTime;
 
   @PrePersist
@@ -137,15 +153,10 @@ public class InstanceConfig {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .omitNullValues()
-        .add("id", id)
-        .add("configAppId", configAppId)
-        .add("configClusterName", configClusterName)
-        .add("configNamespaceName", configNamespaceName)
-        .add("releaseKey", releaseKey)
+    return MoreObjects.toStringHelper(this).omitNullValues().add("id", id)
+        .add("configAppId", configAppId).add("configClusterName", configClusterName)
+        .add("configNamespaceName", configNamespaceName).add("releaseKey", releaseKey)
         .add("dataChangeCreatedTime", dataChangeCreatedTime)
-        .add("dataChangeLastModifiedTime", dataChangeLastModifiedTime)
-        .toString();
+        .add("dataChangeLastModifiedTime", dataChangeLastModifiedTime).toString();
   }
 }

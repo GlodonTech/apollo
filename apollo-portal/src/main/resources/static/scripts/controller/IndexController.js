@@ -1,41 +1,82 @@
-index_module.controller('IndexController', ['$scope', '$window', 'toastr', 'AppUtil', 'AppService',
-                                            'UserService', 'FavoriteService',
-                                            IndexController]);
+/*
+ * Copyright 2024 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+index_module.controller('IndexController', ['$scope', '$window', '$translate', 'toastr', 'AppUtil', 'AppService',
+    'UserService', 'FavoriteService', 'NamespaceService',
+    IndexController]
+)
 
-function IndexController($scope, $window, toastr, AppUtil, AppService, UserService, FavoriteService) {
+
+function IndexController($scope, $window, $translate, toastr, AppUtil, AppService, UserService, FavoriteService, NamespaceService) {
 
     $scope.userId = '';
+    $scope.whichContent = '1';
 
     $scope.getUserCreatedApps = getUserCreatedApps;
     $scope.getUserFavorites = getUserFavorites;
-
+    $scope.getPublicNamespaces = getPublicNamespaces;
     $scope.goToAppHomePage = goToAppHomePage;
     $scope.goToCreateAppPage = goToCreateAppPage;
     $scope.toggleOperationBtn = toggleOperationBtn;
     $scope.toTop = toTop;
     $scope.deleteFavorite = deleteFavorite;
+    $scope.morePublicNamespace = morePublicNamespace;
+    $scope.changeContent = changeContent;
+
+    function initCreateApplicationPermission() {
+        AppService.has_create_application_role($scope.userId).then(
+            function (value) {
+                $scope.hasCreateApplicationPermission = value.hasCreateApplicationPermission;
+            },
+            function (reason) {
+                toastr.warning(AppUtil.errorMsg(reason), $translate.instant('Index.GetCreateAppRoleFailed'));
+            }
+        )
+    }
 
     UserService.load_user().then(function (result) {
         $scope.userId = result.userId;
 
         $scope.createdAppPage = 0;
         $scope.createdApps = [];
-        $scope.hasMoreCreatedApps = true;
+        $scope.hasMoreCreatedApps = false;
         $scope.favoritesPage = 0;
         $scope.favorites = [];
-        $scope.hasMoreFavorites = true;
+        $scope.hasMoreFavorites = false;
+        $scope.publicNamespacePage = 0;
+        $scope.publicNamespaces = [];
+        $scope.hasMorePublicNamespaces = false;
+        $scope.allPublicNamespaces = [];
         $scope.visitedApps = [];
+
+        initCreateApplicationPermission();
 
         getUserCreatedApps();
 
         getUserFavorites();
 
+        getPublicNamespaces();
+
         initUserVisitedApps();
+
     });
 
     function getUserCreatedApps() {
         var size = 10;
-        AppService.find_app_by_owner($scope.userId, $scope.createdAppPage, size)
+        AppService.find_app_by_self($scope.createdAppPage, size)
             .then(function (result) {
                 $scope.createdAppPage += 1;
                 $scope.hasMoreCreatedApps = result.length == size;
@@ -57,7 +98,7 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
                 $scope.favoritesPage += 1;
                 $scope.hasMoreFavorites = result.length == size;
 
-                if ($scope.favoritesPage == 1){
+                if ($scope.favoritesPage == 1) {
                     $("#app-list").removeClass("hidden");
                 }
 
@@ -79,14 +120,37 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
                         });
                         result.forEach(function (favorite) {
                             var app = appIdMapApp[favorite.appId];
-                            if (!app){
+                            if (!app) {
                                 return;
                             }
                             app.favoriteId = favorite.id;
                             $scope.favorites.push(app);
                         });
-
                     });
+            })
+    }
+
+    function getPublicNamespaces() {
+        NamespaceService.find_public_namespaces()
+            .then(function (result) {
+                $scope.allPublicNamespaces = result;
+                morePublicNamespace();
+                var selectResult = [];
+                angular.forEach(result,function (app) {
+                    selectResult.push({
+                        id: app.appId,
+                        text: app.appId + ' / ' + app.name
+                    })
+                });
+                $('#public-name-spaces-search-list').select2({
+                    data: selectResult,
+                });
+                $('#public-name-spaces-search-list').on('select2:select', function () {
+                    var selected = $('#public-name-spaces-search-list').select2('data');
+                    if (selected && selected.length) {
+                        goToAppHomePage(selected[0].id)
+                    }
+                });
             })
     }
 
@@ -109,7 +173,7 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
 
                     userVisitedApps.forEach(function (appId) {
                         var app = appIdMapApp[appId];
-                        if (app){
+                        if (app) {
                             $scope.visitedApps.push(app);
                         }
                     });
@@ -119,11 +183,11 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
     }
 
     function goToCreateAppPage() {
-        $window.location.href = "/app.html";
+        $window.location.href = AppUtil.prefixPath() + "/app.html";
     }
 
     function goToAppHomePage(appId) {
-        $window.location.href = "/config.html?#/appid=" + appId;
+        $window.location.href = AppUtil.prefixPath() + "/config.html?#/appid=" + appId;
     }
 
     function toggleOperationBtn(app) {
@@ -132,7 +196,7 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
 
     function toTop(favoriteId) {
         FavoriteService.toTop(favoriteId).then(function () {
-            toastr.success("置顶成功");
+            toastr.success($translate.instant('Index.Topped'));
             refreshFavorites();
 
         })
@@ -140,7 +204,7 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
 
     function deleteFavorite(favoriteId) {
         FavoriteService.deleteFavorite(favoriteId).then(function () {
-            toastr.success("取消收藏成功");
+            toastr.success($translate.instant('Index.CancelledFavorite'));
             refreshFavorites();
         })
     }
@@ -151,6 +215,26 @@ function IndexController($scope, $window, toastr, AppUtil, AppService, UserServi
         $scope.hasMoreFavorites = true;
 
         getUserFavorites();
+    }
+
+    function morePublicNamespace() {
+        var rest = $scope.allPublicNamespaces.length - $scope.publicNamespacePage * 10;
+        if (rest <= 10) {
+            for (var i = 0; i < rest; i++) {
+                $scope.publicNamespaces.push($scope.allPublicNamespaces[$scope.publicNamespacePage * 10 + i])
+            }
+            $scope.hasMorePublicNamespaces = false;
+        } else {
+            for (var j = 0; j < 10; j++) {
+                $scope.publicNamespaces.push($scope.allPublicNamespaces[$scope.publicNamespacePage * 10 + j])
+            }
+            $scope.hasMorePublicNamespaces = true;
+        }
+        $scope.publicNamespacePage += 1;
+    }
+
+    function changeContent(contentIndex) {
+        $scope.whichContent = contentIndex;
     }
 
 }

@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.common.utils;
 
 import com.ctrip.framework.apollo.common.exception.BeanUtilsException;
@@ -12,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,7 +83,9 @@ public class BeanUtils {
     Set<String> emptyNames = new HashSet<>();
     for (PropertyDescriptor pd : pds) {
       Object srcValue = src.getPropertyValue(pd.getName());
-      if (srcValue == null) emptyNames.add(pd.getName());
+      if (srcValue == null) {
+        emptyNames.add(pd.getName());
+      }
     }
     String[] result = new String[emptyNames.size()];
     return emptyNames.toArray(result);
@@ -91,7 +110,9 @@ public class BeanUtils {
     try {
       Class<?> clazz = list.get(0).getClass();
       Field field = deepFindField(clazz, key);
-      if (field == null) throw new IllegalArgumentException("Could not find the key");
+      if (field == null) {
+        throw new IllegalArgumentException("Could not find the key");
+      }
       field.setAccessible(true);
       for (Object o : list) {
         map.put((K) field.get(o), (V) o);
@@ -119,7 +140,9 @@ public class BeanUtils {
     try {
       Class<?> clazz = list.get(0).getClass();
       Field field = deepFindField(clazz, key);
-      if (field == null) throw new IllegalArgumentException("Could not find the key");
+      if (field == null) {
+        throw new IllegalArgumentException("Could not find the key");
+      }
       field.setAccessible(true);
       for (Object o : list) {
         K k = (K) field.get(o);
@@ -142,17 +165,19 @@ public class BeanUtils {
    */
   @SuppressWarnings("unchecked")
   public static <K> Set<K> toPropertySet(String key, List<?> list) {
-    Set<K> set = new HashSet<>();
+    Set<K> set = new LinkedHashSet<>();
     if (CollectionUtils.isEmpty(list)) {// 防止外面传入空list
       return set;
     }
     try {
       Class<?> clazz = list.get(0).getClass();
       Field field = deepFindField(clazz, key);
-      if (field == null) throw new IllegalArgumentException("Could not find the key");
+      if (field == null) {
+        throw new IllegalArgumentException("Could not find the key");
+      }
       field.setAccessible(true);
       for (Object o : list) {
-        set.add((K)field.get(o));
+        set.add((K) field.get(o));
       }
     } catch (Exception e) {
       throw new BeanUtilsException(e);
@@ -226,5 +251,6 @@ public class BeanUtils {
     org.springframework.beans.BeanUtils.copyProperties(source, target, COPY_IGNORED_PROPERTIES);
   }
 
-  private static final String[] COPY_IGNORED_PROPERTIES = {"id", "dataChangeCreatedBy", "dataChangeCreatedTime", "dataChangeLastModifiedTime"};
+  private static final String[] COPY_IGNORED_PROPERTIES =
+      {"id", "dataChangeCreatedBy", "dataChangeCreatedTime", "dataChangeLastModifiedTime"};
 }

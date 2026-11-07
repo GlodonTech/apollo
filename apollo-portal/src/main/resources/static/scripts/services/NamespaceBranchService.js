@@ -1,37 +1,127 @@
-appService.service('NamespaceBranchService', ['$resource', '$q', function ($resource, $q) {
+/*
+ * Copyright 2024 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+appService.service('NamespaceBranchService', ['$resource', '$q', 'AppUtil', function ($resource, $q, AppUtil) {
     var resource = $resource('', {}, {
         find_namespace_branch: {
             method: 'GET',
             isArray: false,
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches'
         },
         create_branch: {
             method: 'POST',
             isArray: false,
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches'
         },
         delete_branch: {
             method: 'DELETE',
             isArray: false,
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName'
         },
         merge_and_release_branch: {
             method: 'POST',
             isArray: false,
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/merge'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/merge'
         },
         find_branch_gray_rules: {
             method: 'GET',
             isArray: false,
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/rules'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/rules'
         },
         update_branch_gray_rules: {
             method: 'PUT',
             isArray: false,
-            url: '/apps/:appId/envs/:env/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/rules'
+            url: AppUtil.prefixPath() + '/openapi/v1/envs/:env/apps/:appId/clusters/:clusterName/namespaces/:namespaceName/branches/:branchName/rules'
         }
 
     });
+
+    function toLegacyItem(openItem) {
+        var item = angular.copy(openItem || {});
+        var extendInfo = item.extendInfo || {};
+        delete item.extendInfo;
+        if (extendInfo.namespaceId) {
+            item.namespaceId = extendInfo.namespaceId;
+        }
+        return {
+            item: item,
+            isModified: !!extendInfo.isModified,
+            isDeleted: !!extendInfo.isDeleted,
+            isNewlyAdded: !!extendInfo.isNewlyAdded,
+            oldValue: extendInfo.oldValue,
+            newValue: extendInfo.newValue
+        };
+    }
+
+    function firstNamespaceId(items) {
+        var namespaceId;
+        angular.forEach(items || [], function (itemBO) {
+            if (namespaceId || !itemBO.item) {
+                return;
+            }
+            namespaceId = itemBO.item.namespaceId;
+        });
+        return namespaceId;
+    }
+
+    function toLegacyNamespace(openNamespace) {
+        if (!openNamespace || openNamespace.baseInfo) {
+            return openNamespace;
+        }
+
+        var namespace = angular.copy(openNamespace || {});
+        if (!namespace.appId && !namespace.clusterName && !namespace.namespaceName) {
+            return {};
+        }
+
+        var extendInfo = namespace.extendInfo || {};
+        var items = [];
+        angular.forEach(namespace.items || [], function (item) {
+            items.push(toLegacyItem(item));
+        });
+
+        var baseInfo = {
+            appId: namespace.appId,
+            clusterName: namespace.clusterName,
+            namespaceName: namespace.namespaceName,
+            dataChangeCreatedBy: namespace.dataChangeCreatedBy,
+            dataChangeLastModifiedBy: namespace.dataChangeLastModifiedBy,
+            dataChangeCreatedTime: namespace.dataChangeCreatedTime,
+            dataChangeLastModifiedTime: namespace.dataChangeLastModifiedTime
+        };
+        var namespaceId = namespace.id || firstNamespaceId(items);
+        if (namespaceId) {
+            baseInfo.id = namespaceId;
+        }
+
+        return {
+            baseInfo: baseInfo,
+            itemModifiedCnt: extendInfo.itemModifiedCnt || 0,
+            items: items,
+            format: namespace.format,
+            isPublic: !!namespace.isPublic,
+            parentAppId: extendInfo.parentAppId,
+            comment: namespace.comment,
+            isConfigHidden: !!extendInfo.isConfigHidden
+        };
+    }
+
+    function toDeleteBranchValue(deleteBranch) {
+        return deleteBranch === false || deleteBranch === 'false' ? false : true;
+    }
 
     function find_namespace_branch(appId, env, clusterName, namespaceName) {
         var d = $q.defer();
@@ -42,7 +132,7 @@ appService.service('NamespaceBranchService', ['$resource', '$q', function ($reso
                                            namespaceName: namespaceName
                                        },
                                        function (result) {
-                                           d.resolve(result);
+                                           d.resolve(toLegacyNamespace(result));
                                        }, function (result) {
                 d.reject(result);
             });
@@ -58,7 +148,7 @@ appService.service('NamespaceBranchService', ['$resource', '$q', function ($reso
                                    namespaceName: namespaceName
                                }, {},
                                function (result) {
-                                   d.resolve(result);
+                                   d.resolve(toLegacyNamespace(result));
                                }, function (result) {
                 d.reject(result);
             });
@@ -91,7 +181,7 @@ appService.service('NamespaceBranchService', ['$resource', '$q', function ($reso
                                               clusterName: clusterName,
                                               namespaceName: namespaceName,
                                               branchName: branchName,
-                                              deleteBranch:deleteBranch
+                                              deleteBranch: toDeleteBranchValue(deleteBranch)
                                           }, {
                                               releaseTitle: title,
                                               releaseComment: comment,

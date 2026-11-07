@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.configservice.util;
 
 import com.ctrip.framework.apollo.common.entity.AppNamespace;
@@ -69,12 +85,14 @@ public class NamespaceUtilTest {
     AppNamespace someAppNamespace = mock(AppNamespace.class);
 
     when(someAppNamespace.getName()).thenReturn(someNormalizedNamespaceName);
-    when(appNamespaceServiceWithCache.findByAppIdAndNamespace(someAppId, someNamespaceName)).thenReturn
-        (someAppNamespace);
+    when(appNamespaceServiceWithCache.findByAppIdAndNamespace(someAppId, someNamespaceName))
+        .thenReturn(someAppNamespace);
 
-    assertEquals(someNormalizedNamespaceName, namespaceUtil.normalizeNamespace(someAppId, someNamespaceName));
+    assertEquals(someNormalizedNamespaceName,
+        namespaceUtil.normalizeNamespace(someAppId, someNamespaceName));
 
-    verify(appNamespaceServiceWithCache, times(1)).findByAppIdAndNamespace(someAppId, someNamespaceName);
+    verify(appNamespaceServiceWithCache, times(1)).findByAppIdAndNamespace(someAppId,
+        someNamespaceName);
     verify(appNamespaceServiceWithCache, never()).findPublicNamespaceByName(someNamespaceName);
   }
 
@@ -86,12 +104,16 @@ public class NamespaceUtilTest {
     AppNamespace someAppNamespace = mock(AppNamespace.class);
 
     when(someAppNamespace.getName()).thenReturn(someNormalizedNamespaceName);
-    when(appNamespaceServiceWithCache.findByAppIdAndNamespace(someAppId, someNamespaceName)).thenReturn(null);
-    when(appNamespaceServiceWithCache.findPublicNamespaceByName(someNamespaceName)).thenReturn(someAppNamespace);
+    when(appNamespaceServiceWithCache.findByAppIdAndNamespace(someAppId, someNamespaceName))
+        .thenReturn(null);
+    when(appNamespaceServiceWithCache.findPublicNamespaceByName(someNamespaceName))
+        .thenReturn(someAppNamespace);
 
-    assertEquals(someNormalizedNamespaceName, namespaceUtil.normalizeNamespace(someAppId, someNamespaceName));
+    assertEquals(someNormalizedNamespaceName,
+        namespaceUtil.normalizeNamespace(someAppId, someNamespaceName));
 
-    verify(appNamespaceServiceWithCache, times(1)).findByAppIdAndNamespace(someAppId, someNamespaceName);
+    verify(appNamespaceServiceWithCache, times(1)).findByAppIdAndNamespace(someAppId,
+        someNamespaceName);
     verify(appNamespaceServiceWithCache, times(1)).findPublicNamespaceByName(someNamespaceName);
   }
 
@@ -100,12 +122,15 @@ public class NamespaceUtilTest {
     String someAppId = "someAppId";
     String someNamespaceName = "someNamespaceName";
 
-    when(appNamespaceServiceWithCache.findByAppIdAndNamespace(someAppId, someNamespaceName)).thenReturn(null);
-    when(appNamespaceServiceWithCache.findPublicNamespaceByName(someNamespaceName)).thenReturn(null);
+    when(appNamespaceServiceWithCache.findByAppIdAndNamespace(someAppId, someNamespaceName))
+        .thenReturn(null);
+    when(appNamespaceServiceWithCache.findPublicNamespaceByName(someNamespaceName))
+        .thenReturn(null);
 
     assertEquals(someNamespaceName, namespaceUtil.normalizeNamespace(someAppId, someNamespaceName));
 
-    verify(appNamespaceServiceWithCache, times(1)).findByAppIdAndNamespace(someAppId, someNamespaceName);
+    verify(appNamespaceServiceWithCache, times(1)).findByAppIdAndNamespace(someAppId,
+        someNamespaceName);
     verify(appNamespaceServiceWithCache, times(1)).findPublicNamespaceByName(someNamespaceName);
   }
 }

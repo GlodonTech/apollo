@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Apollo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package com.ctrip.framework.apollo.adminservice.controller;
 
 import com.ctrip.framework.apollo.biz.entity.Namespace;
@@ -27,8 +43,7 @@ public class AppNamespaceController {
   private final AppNamespaceService appNamespaceService;
   private final NamespaceService namespaceService;
 
-  public AppNamespaceController(
-      final AppNamespaceService appNamespaceService,
+  public AppNamespaceController(final AppNamespaceService appNamespaceService,
       final NamespaceService namespaceService) {
     this.appNamespaceService = appNamespaceService;
     this.namespaceService = namespaceService;
@@ -36,43 +51,45 @@ public class AppNamespaceController {
 
   @PostMapping("/apps/{appId}/appnamespaces")
   public AppNamespaceDTO create(@RequestBody AppNamespaceDTO appNamespace,
-                                @RequestParam(defaultValue = "false") boolean silentCreation) {
+      @RequestParam(defaultValue = "false") boolean silentCreation) {
 
     AppNamespace entity = BeanUtils.transform(AppNamespace.class, appNamespace);
     AppNamespace managedEntity = appNamespaceService.findOne(entity.getAppId(), entity.getName());
 
     if (managedEntity == null) {
-      if (StringUtils.isEmpty(entity.getFormat())){
+      if (StringUtils.isEmpty(entity.getFormat())) {
         entity.setFormat(ConfigFileFormat.Properties.getValue());
       }
 
       entity = appNamespaceService.createAppNamespace(entity);
     } else if (silentCreation) {
-      appNamespaceService.createNamespaceForAppNamespaceInAllCluster(appNamespace.getAppId(), appNamespace.getName(),
-          appNamespace.getDataChangeCreatedBy());
+      appNamespaceService.createNamespaceForAppNamespaceInAllCluster(appNamespace.getAppId(),
+          appNamespace.getName(), appNamespace.getDataChangeCreatedBy());
 
       entity = managedEntity;
     } else {
-      throw new BadRequestException("app namespaces already exist.");
+      throw BadRequestException.appNamespaceAlreadyExists(entity.getAppId(), entity.getName());
     }
 
     return BeanUtils.transform(AppNamespaceDTO.class, entity);
   }
 
   @DeleteMapping("/apps/{appId}/appnamespaces/{namespaceName:.+}")
-  public void delete(@PathVariable("appId") String appId, @PathVariable("namespaceName") String namespaceName,
-      @RequestParam String operator) {
+  public void delete(@PathVariable("appId") String appId,
+      @PathVariable("namespaceName") String namespaceName, @RequestParam String operator) {
     AppNamespace entity = appNamespaceService.findOne(appId, namespaceName);
     if (entity == null) {
-      throw new BadRequestException("app namespace not found for appId: " + appId + " namespace: " + namespaceName);
+      throw BadRequestException.appNamespaceNotExists(appId, namespaceName);
     }
     appNamespaceService.deleteAppNamespace(entity, operator);
   }
 
   @GetMapping("/appnamespaces/{publicNamespaceName}/namespaces")
-  public List<NamespaceDTO> findPublicAppNamespaceAllNamespaces(@PathVariable String publicNamespaceName, Pageable pageable) {
+  public List<NamespaceDTO> findPublicAppNamespaceAllNamespaces(
+      @PathVariable String publicNamespaceName, Pageable pageable) {
 
-    List<Namespace> namespaces = namespaceService.findPublicAppNamespaceAllNamespaces(publicNamespaceName, pageable);
+    List<Namespace> namespaces =
+        namespaceService.findPublicAppNamespaceAllNamespaces(publicNamespaceName, pageable);
 
     return BeanUtils.batchTransform(NamespaceDTO.class, namespaces);
   }

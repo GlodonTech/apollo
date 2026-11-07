@@ -1,14 +1,29 @@
 #!/bin/sh
+#
+# Copyright 2024 Apollo Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 # apollo config db info
-apollo_config_db_url=jdbc:mysql://fill-in-the-correct-server:3306/ApolloConfigDB?characterEncoding=utf8
-apollo_config_db_username=FillInCorrectUser
-apollo_config_db_password=FillInCorrectPassword
+apollo_config_db_url='jdbc:mysql://fill-in-the-correct-server:3306/ApolloConfigDB?characterEncoding=utf8'
+apollo_config_db_username='FillInCorrectUser'
+apollo_config_db_password='FillInCorrectPassword'
 
 # apollo portal db info
-apollo_portal_db_url=jdbc:mysql://fill-in-the-correct-server:3306/ApolloPortalDB?characterEncoding=utf8
-apollo_portal_db_username=FillInCorrectUser
-apollo_portal_db_password=FillInCorrectPassword
+apollo_portal_db_url='jdbc:mysql://fill-in-the-correct-server:3306/ApolloPortalDB?characterEncoding=utf8'
+apollo_portal_db_username='FillInCorrectUser'
+apollo_portal_db_password='FillInCorrectPassword'
 
 # meta server url, different environments should have different meta server addresses
 dev_meta=http://fill-in-dev-meta-server:8080
@@ -20,14 +35,14 @@ META_SERVERS_OPTS="-Ddev_meta=$dev_meta -Dfat_meta=$fat_meta -Duat_meta=$uat_met
 
 # =============== Please do not modify the following content =============== #
 # go to script directory
-cd "${0%/*}"
+cd "${0%/*}" || exit 
 
 cd ..
 
 # package config-service and admin-service
 echo "==== starting to build config-service and admin-service ===="
 
-mvn clean package -DskipTests -pl apollo-configservice,apollo-adminservice -am -Dapollo_profile=github -Dspring_datasource_url=$apollo_config_db_url -Dspring_datasource_username=$apollo_config_db_username -Dspring_datasource_password=$apollo_config_db_password
+mvn clean package -DskipTests -pl apollo-configservice,apollo-adminservice -am -Dapollo_profile=github,database-discovery -Dspring_datasource_url=$apollo_config_db_url -Dspring_datasource_username=$apollo_config_db_username -Dspring_datasource_password=$apollo_config_db_password
 
 echo "==== building config-service and admin-service finished ===="
 
